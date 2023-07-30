@@ -131,7 +131,28 @@ class _HomeState extends State<Home> {
         videos = await Permission.videos.status.isGranted;
         photos = await Permission.photos.status.isGranted;
       } else {
-        storage = await Permission.storage.status.isGranted;
+
+        final permissionStatus = await Permission.storage.status;
+        if (permissionStatus.isDenied) {
+          // Here just ask for the permission for the first time
+          await Permission.storage.request();
+
+          // I noticed that sometimes popup won't show after user press deny
+          // so I do the check once again but now go straight to appSettings
+          if (permissionStatus.isDenied) {
+            await openAppSettings();
+          }
+        } else if (permissionStatus.isPermanentlyDenied) {
+          // Here open app settings for user to manually enable permission in case
+          // where permission was permanently denied
+          await openAppSettings();
+        }else if(permissionStatus.isGranted){
+          storage=true;
+        }
+
+
+
+
       }
     }else if(Platform.isIOS){
       storage = await Permission.storage.status.isGranted;

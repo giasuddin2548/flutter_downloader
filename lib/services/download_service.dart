@@ -70,7 +70,7 @@ class DownloadService{
   }
 
 
-
+  @pragma('vm:entry-point')
   Future<void> downloadWithNotificationIsolation(DownloadData d) async {
     final receiverPort=ReceivePort();
     try{
@@ -82,12 +82,14 @@ class DownloadService{
     final response=await receiverPort.first as String;
 
     Fluttertoast.showToast(msg: response, toastLength: Toast.LENGTH_SHORT, gravity: ToastGravity.BOTTOM);
+  ///  notificationService.showDownloadCompleted(plugin: plugin, maxProgress: 0, progress: 0, title: d.fileName, id: 2);
+
     // OpenFile.open(response);
     // print('Download Result-> $response');
 
   }
 
-
+  @pragma('vm:entry-point')
   void _downloadWithNotificationIsolation(List<dynamic> args) async {
     var myMax=0;
     var myMin=0;
@@ -99,10 +101,13 @@ class DownloadService{
     print('Download-Path:->$filePath');
     print('Download-Start:');
     var response=await Dio().download(d.url, filePath, onReceiveProgress: (count, total){
+      myMax=total;
+      myMin=count;
       notificationService.showDownloadNotification(plugin: plugin, maxProgress: total, progress: count, title: d.fileName, id: d.id);
     });
     if(response.statusCode==200){
-      notificationService.showDownloadCompleted(plugin: plugin, maxProgress: myMax, progress: myMin, title: d.fileName, id: d.id);
+
+
       Isolate.exit(sendPort, "Download Successful");
 
     }else{

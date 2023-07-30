@@ -76,6 +76,7 @@ class NotificationService{
     );
 
     NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics, iOS: iosPlatformChannelSpecifics);
+    clearNotification(plugin);
     plugin.show(id, title, title, platformChannelSpecifics);
 
   }
