@@ -1,6 +1,7 @@
 
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:dio/dio.dart';
 import 'package:download/model/DataModel.dart';
@@ -72,48 +73,62 @@ class DownloadService{
 
   @pragma('vm:entry-point')
   Future<void> downloadWithNotificationIsolation(DownloadData d) async {
-    final receiverPort=ReceivePort();
     try{
-      await Isolate.spawn(_downloadWithNotificationIsolation, [receiverPort.sendPort, d]);
+      final receiverPort=ReceivePort();
+      try{
+        await Isolate.spawn(_downloadWithNotificationIsolation, [receiverPort.sendPort, d]);
 
-    }catch(e){
-      print(e);
+      }catch(e){
+        print(e);
+      }
+      await receiverPort.first.then((value) {
+        Fluttertoast.showToast(msg: value, toastLength: Toast.LENGTH_SHORT, gravity: ToastGravity.BOTTOM);
+        print('Downloading: Received');
+      });
+
+
+      ///  notificationService.showDownloadCompleted(plugin: plugin, maxProgress: 0, progress: 0, title: d.fileName, id: 2);
+
+      // OpenFile.open(response);
+      // print('Download Result-> $response');
+
+    }catch(e, l){
+      print("Download-Error: $e");
+      print("Download-Error: $l");
     }
-    final response=await receiverPort.first as String;
-
-    Fluttertoast.showToast(msg: response, toastLength: Toast.LENGTH_SHORT, gravity: ToastGravity.BOTTOM);
-  ///  notificationService.showDownloadCompleted(plugin: plugin, maxProgress: 0, progress: 0, title: d.fileName, id: 2);
-
-    // OpenFile.open(response);
-    // print('Download Result-> $response');
-
   }
 
   @pragma('vm:entry-point')
   void _downloadWithNotificationIsolation(List<dynamic> args) async {
     var myMax=0;
     var myMin=0;
-    BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
-    SendPort sendPort=args[0];
-    var d=args[1] as DownloadData;
-    final  directory = await getApplicationDocumentsDirectory();
-    final String filePath = "${directory.path}/${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}-${DateTime.now().hour}-${DateTime.now().minute}-${DateTime.now().second}.pdf";
-    print('Download-Path:->$filePath');
-    print('Download-Start:');
-    var response=await Dio().download(d.url, filePath, onReceiveProgress: (count, total){
-      myMax=total;
-      myMin=count;
-      notificationService.showDownloadNotification(plugin: plugin, maxProgress: total, progress: count, title: d.fileName, id: d.id);
-    });
-    if(response.statusCode==200){
 
+    try{
+      BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
+      DartPluginRegistrant.ensureInitialized();  // <- this works
+      SendPort sendPort=args[0];
+      var d=args[1] as DownloadData;
+      final  directory = await getApplicationDocumentsDirectory();
+      final String filePath = "${directory.path}/${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}-${DateTime.now().hour}-${DateTime.now().minute}-${DateTime.now().second}.pdf";
+      print('Download-Path:->$filePath');
+      print('Download-Start:');
+      var response=await Dio().download(d.url, filePath, onReceiveProgress: (count, total){
+        print('Downloading: $count');
+        notificationService.showDownloadNotification(plugin: plugin, maxProgress: total, progress: count, title: d.fileName, id: d.id);
+      });
+      if(response.statusCode==200){
 
-      Isolate.exit(sendPort, "Download Successful");
+        print('Downloading: Success');
+        Isolate.exit(sendPort, "Download Successful");
 
-    }else{
-      Isolate.exit(sendPort, "Download Failed");
+      }else{
+        Isolate.exit(sendPort, "Download Failed");
+      }
+
+    }catch(e, l){
+      print('Download-Error:->$l');
+      print('Download-Error:->$e');
     }
-
 
   }
 
